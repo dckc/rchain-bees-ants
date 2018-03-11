@@ -139,6 +139,7 @@ if (!$result = $stmt->execute())
     <input type="hidden" name="-redirect" value="">
     <input type="hidden" name="UserName" value="<?php echo htmlspecialchars($login); ?>">
     <input type="hidden" name="Password" value="<?php echo $session_token; ?>">
+	<noscript><input type="submit" value="Click here to finish authenticating"></noscript>
 </form>
 
 <script>
