@@ -5,3 +5,4 @@ vendor/
 templates_c/
 composer.phar
 composer-setup.php
+error_log

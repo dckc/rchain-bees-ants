@@ -79,7 +79,7 @@
 			}catch (Exception $e) {
 				$this->printError('cannot getGuildMember');
 			}
-			$coop_member_role = intval($this->ini_array['discord_coop_role']);
+			$coop_member_role = intval($this->ini_array['discord_coop_role_id']);
 
 			if(! in_array($coop_member_role, $member->roles))
 			{
