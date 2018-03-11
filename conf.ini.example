@@ -2,7 +2,7 @@
 
 title="RChain Bounty Budget and Rewards (BETA)"
 [_xataface_installation]
-xataface_location=xataface-2.1.3/dataface-public-api.php
+xataface_folder=xataface-2.1.3
 
 [_database]
 host={{ db_host }}
@@ -49,7 +49,7 @@ github_app_client_secret = {{ gh_client_secret }}
 github_api_url = https://github.com/login/oauth/access_token
 
 [discord_oauth]
-discord_coop_role = {{ discord_coop_role }}
+discord_coop_role_id = {{ discord_coop_role_id }}
 rchain_guild_id = {{ rchain_guild_id }}
 discord_client_id = {{ discord_client_id }}
 discord_client_secret = {{ discord_client_secret }}

@@ -3,10 +3,12 @@
 // ini_set('display_errors', 1);
 // error_reporting(1);
 // ini_set('error_reporting', E_ALL);
+
+
 $ini_array = parse_ini_file("conf.ini");
 
 // Include the Xataface API
-require_once $ini_array['xataface_location'];
+require_once $ini_array['xataface_folder'] . '/dataface-public-api.php';
   
 // Include custom code
 require __DIR__ . '/vendor/autoload.php';
@@ -25,7 +27,7 @@ if(checkForDiscordRedirect())
 
 
 // Initialize Xataface framework
-df_init(__FILE__, 'xataface-2.1.3')->display();
+df_init(__FILE__, $ini_array['xataface_folder'])->display();
     // first parameter is always the same (path to the current script)
     // 2nd parameter is relative URL to xataface directory (used for CSS files and javascripts)
   
