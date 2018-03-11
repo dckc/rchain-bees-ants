@@ -2,7 +2,7 @@
 
 title="RChain Bounty Budget and Rewards (BETA)"
 [_xataface_installation]
-xataface_location=xataface-2.1.3/dataface-public-api.php
+xataface_folder=xataface-2.1.3
 
 [_database]
 host={{ db_host }}
