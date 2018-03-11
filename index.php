@@ -1,5 +1,5 @@
 <?php
-//error reporting for debugging
+// error reporting for debugging
 // ini_set('display_errors', 1);
 // error_reporting(1);
 // ini_set('error_reporting', E_ALL);
