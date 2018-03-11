@@ -2,6 +2,7 @@
 
 title="RChain Bounty Budget and Rewards (BETA)"
 [_xataface_installation]
+xataface_location=xataface-2.1.3/dataface-public-api.php
 
 [_database]
 host={{ db_host }}
@@ -11,10 +12,6 @@ password={{ db_password }}
 ;; avoid:
 ;; PHP Fatal error:  Uncaught Error: Call to undefined function mysql_connect()
 ;; http://xataface-tips.blogspot.ca/2014/06/using-mysqli-in-xataface.html
-driver=mysqli
-
-[_tables]
-;; This section lists the tables to include in your application menu
 driver=mysqli
 
 [_tables]
@@ -55,3 +52,6 @@ github_api_url = https://github.com/login/oauth/access_token
 discord_coop_role = {{ discord_coop_role }}
 rchain_guild_id = {{ rchain_guild_id }}
 discord_client_id = {{ discord_client_id }}
+discord_client_secret = {{ discord_client_secret }}
+discord_redirect_uri = {{ discord_redirect_uri }}
+discord_bot_token = {{ discord_bot_token }}
