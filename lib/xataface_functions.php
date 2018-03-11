@@ -14,7 +14,7 @@
 
 		$is_verified_coop = $user->val($ini_array['verified_coop_column']);
 		
-		if(!($is_verified_coop == 0 || $is_verified_coop == null || $is_verified_coop == 'null'))
+		if($is_verified_coop == 1)
 		{
 			return True;
 		}
