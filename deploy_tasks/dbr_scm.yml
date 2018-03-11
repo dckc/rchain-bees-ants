@@ -1,0 +1,6 @@
+---
+
+- name: check out rchain-dbr
+  git:
+    repo: https://github.com/dckc/rchain-dbr
+    dest: "{{ install_dir }}"

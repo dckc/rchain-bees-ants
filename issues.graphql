@@ -1,0 +1,21 @@
+query PARAMETERS {
+  repository(owner:"rchain", name:"bounties") {
+    issues(first: 100 CURSOR STATES) {
+      pageInfo {
+        endCursor,
+        hasNextPage
+      },
+      nodes {
+        number
+        url
+        author {
+          login
+        }
+        state
+        title
+        createdAt
+        updatedAt
+      }
+    }
+  }
+}

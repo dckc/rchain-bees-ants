@@ -17,14 +17,7 @@ $url = $ini_array['github_api_url'];
 #if there is no code, then they haven't been redirected here from github, so lets send them to github
 if(!array_key_exists('code', $_GET) || !isset($_GET['code']))
 {
-	if($ini_array['github_include_email_scope'])
-	{
-		$auth_url = 'https://github.com/login/oauth/authorize?client_id='.$client_id.'&scope=user:email';
-	}
-	else
-	{
-		$auth_url = 'https://github.com/login/oauth/authorize?client_id='.$client_id;
-	}
+	$auth_url = 'https://github.com/login/oauth/authorize?client_id='.$client_id;
     header('Location: '.$auth_url);
 }
 
@@ -84,57 +77,6 @@ if(!property_exists($response, 'login') || $response->login == '')
     exit();
 }
 
-$github_data = array();
-$github_data['login'] = $response->login;
-$github_data['name'] = $response->name;
-$github_data['location'] = $response->location;
-$github_data['bio'] = $response->bio;
-$github_data['website_url'] = $response->blog;
-$github_data['avatar_url'] = $response->avatar_url;
-$github_data['created_at'] = $response->created_at;
-
-if($ini_array['github_include_email_scope'])
-{
-	#next get the private email address
-	$json_url = 'https://api.github.com/user/emails?'.$result;
-	$options  = array('http' => array('user_agent'=> $_SERVER['HTTP_USER_AGENT']));
-	$context  = stream_context_create($options);
-
-	if(!$response = file_get_contents($json_url, false, $context))
-	{
-		echo "failed to connect to github";
-		exit();
-	}
-
-	if(strpos($response, 'error') !== false) 
-	{
-		echo "Github responded with an error. Cannot login.";
-		exit();
-	}
-
-	$response = json_decode($response);
-
-	#if more than one in array, we need to go through and find the primary one.
-	if(count($response) > 1)
-	{
-		foreach($response as $email_object)
-		{
-			if($email_object->primary == 1)
-			{
-				$github_data['email'] = $email_object->email;
-			}
-		}
-	}
-	else
-	{
-		$github_data['email'] = $response[0]->email;
-	}
-}
-else
-{
-	$github_data['email'] = '';
-}
-
 #now the user is authorized from github, so in order to user the built in xataface session management, 
 #we need to tell it to login like a normal user. So lets create a temporary password for this session,
 #and store it in the database. Then we will submit the login form to xataface with the correct username
@@ -147,11 +89,6 @@ if ($mysqli->connect_errno)
     echo "could not connect to database";
     exit();
 }
-#escape everything
-foreach($github_data as $key=>$val)
-{
-    $github_data[$key] = $mysqli->real_escape_string($val);
-}
 
 
 #randomly generate the temporary session token
@@ -159,12 +96,38 @@ foreach($github_data as $key=>$val)
 #this is CSPRNG. Also saved in database as md5
 $session_token = getToken(40);
 
-$sql = "INSERT into ".$ini_array['users_table']." (".$ini_array['username_column'].", ".$ini_array['password_column'].", name, location, email, bio, websiteUrl, avatarUrl, createdAt) " .
-        "VALUES ('".$github_data['login']."', '".$session_token."',  '".$github_data['name']."', '".$github_data['location']."', '".$github_data['email']."', '".$github_data['bio']."', '".$github_data['website_url']."', '".$github_data['avatar_url']."', '".$github_data['created_at']."') " .
-        "ON DUPLICATE KEY UPDATE ".$ini_array['username_column']."=VALUES(".$ini_array['username_column']."), ".$ini_array['password_column']."=VALUES(".$ini_array['password_column']."), name=VALUES(name), location=VALUES(location), email=VALUES(email), bio=VALUES(bio), websiteUrl=VALUES(websiteUrl), avatarUrl=VALUES(avatarUrl), createdAt=VALUES(createdAt)";
-if (!$result = $mysqli->query($sql)) 
+$sql = <<<SQL
+INSERT into {users_table} ({username_column}, {password_column},
+                           name, location, email, bio, websiteUrl, avatarUrl, createdAt)
+VALUES (?, ?,
+        ?, ?, ?, ?, ?, ?, ?)
+ON DUPLICATE KEY UPDATE
+  {username_column}=VALUES({username_column}),
+  {password_column}=VALUES({password_column}),
+  name=VALUES(name), location=VALUES(location), email=VALUES(email), bio=VALUES(bio),
+  websiteUrl=VALUES(websiteUrl), avatarUrl=VALUES(avatarUrl), createdAt=VALUES(createdAt)
+SQL;
+$sql = str_replace('{users_table}', $ini_array['users_table'], $sql);
+$sql = str_replace('{username_column}', $ini_array['username_column'], $sql);
+$sql = str_replace('{password_column}', $ini_array['password_column'], $sql);
+
+if(!$stmt = $mysqli->prepare($sql)) {
+    echo "cannot prepare SQL statement";
+    exit();
+}
+$login = $response->login;
+$created_at = str_replace('T', ' ', $response->created_at);
+$created_at = str_replace('Z', '', $response->created_at);
+
+$stmt->bind_param('sssssssss', $response->login, $session_token,
+    $response->name, $response->location, $response->email,
+    $response->bio, $response->website_url, $response->avatar_url,
+    $created_at);
+
+if (!$result = $stmt->execute())
 {
     echo "could not write to database";
+    print_r($mysqli->error_list);
     exit();
 }
 
@@ -174,7 +137,7 @@ if (!$result = $mysqli->query($sql))
 <form id='login_form' action="index.php" method="post" class="xataface-login-form">
     <input type="hidden" name="-action" value="login">
     <input type="hidden" name="-redirect" value="">
-    <input type="hidden" name="UserName" value="<?php echo $github_data['login']; ?>">
+    <input type="hidden" name="UserName" value="<?php echo htmlspecialchars($login); ?>">
     <input type="hidden" name="Password" value="<?php echo $session_token; ?>">
 </form>
 

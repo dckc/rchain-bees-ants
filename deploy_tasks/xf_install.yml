@@ -1,0 +1,25 @@
+---
+- name: make xataface templates cache
+  file:
+    state: directory
+    path: "{{ install_dir }}/templates_c"
+    # "ensure that it is writable by the web server"
+    mode: "o+rw"
+- name: check for xataface installation
+  stat:
+    path: "{{ xf_dir }}"
+  register: xf
+- name: "Download xataface 2.1.3"
+  get_url:
+    url: https://github.com/shannah/xataface/archive/2.1.3.zip
+    dest: /tmp/xataface-2.1.3.zip
+    checksum: sha256:8dd8b84fdfac32a4aa2f377101f2b179ddfc7d01b26bce737938fcaea2e3458c
+    validate_certs: no
+  register: xf_zip
+  when: not xf.stat.exists
+- name: install xataface
+  unarchive:
+    src: "{{ xf_zip.dest }}"
+    remote_src: yes
+    dest: "{{ install_dir }}"
+  when: not xf.stat.exists

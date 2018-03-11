@@ -36,63 +36,45 @@ def main(argv, cwd, create_engine):
 
     yyyymm = opt['--pay-period']
 
-    data_dir = cwd / opt['--data-dir']
+    data_cache = DataCache(cwd / opt['--data-dir'])
 
     if opt['save_sheets']:
         big = BigSheet.read_xlsx(cwd / opt['<xlsx>'], yyyymm)
-        big.to_pickles(data_dir)
+        big.to_cache(data_cache)
     elif opt['normalize']:
-        big = BigSheet.read_pickles(data_dir, yyyymm)
-        issues = big.issues()
-        budget_votes = big.budget_votes(yyyymm)
-        reward_votes = big.reward_votes(yyyymm)
-        save_pickles(data_dir, [
-            ('issue.pkl', issues),
-            ('reward_vote.pkl', reward_votes),
-            ('budget_vote.pkl', budget_votes),
-        ])
+        BigSheet.normalize(data_cache, yyyymm)
     elif opt['insert']:
-        dfs = []
-        for fname in ['issue.pkl', 'reward_vote.pkl', 'budget_vote.pkl']:
-            with (data_dir / fname).open('rb') as bfp:
-                dfs.append(pd.read_pickle(bfp))
-        [issues, reward_votes, budget_votes] = dfs
-
         with (cwd / opt['--db-access']).open('r') as txt_in:
             url = json.load(txt_in)["url"]
         dbr = create_engine(url)
 
         with dbr.connect() as con:
-            users = pd.read_sql('select login from github_users', con=con)
-
-            budget_votes = BigSheet.only_known_users(
-                budget_votes, users.login, ['voter'])
-            reward_votes = BigSheet.only_known_users(
-                reward_votes, users.login, ['voter', 'worker'])
-            table_info = [
-                ('issue', issues),
-                ('reward_vote', reward_votes),
-                ('budget_vote', budget_votes),
-            ]
-            # delete in reverse order
-            for table_name, _ in reversed(table_info):
-                log.info('delete from %s...', table_name)
-                con.execute('delete from ' + table_name)  # ISSUE: truncate?
-
-            for table_name, data in table_info:
-                log.info('insert %d into %s...', len(data), table_name)
-                data.to_sql(
-                    table_name, con=dbr, if_exists='append')
+            BigSheet.insert(con, data_cache)
 
 
-def save_pickles(data_dir, info):
-    for fname, data in info:
-        with (data_dir / fname).open('wb') as out:
-            logging.info('saving %s...', fname)
-            data.to_pickle(out)
+class DataCache(object):
+    def __init__(self, data_dir):
+        self.__data_dir = data_dir
+
+    def save_sheets(self, info):
+        for fname, data in info:
+            with (self.__data_dir / fname).open('wb') as out:
+                logging.info('saving %s...', fname)
+                data.to_pickle(out)
+
+    def read(self, names):
+        logging.info('reading...')
+        sheets = []
+        for fname in names:
+            with (self.__data_dir / fname).open('rb') as bfp:
+                sheets.append(pd.read_pickle(bfp))
+        return sheets
 
 
 class BigSheet(object):
+    denorm_names = ['budget.pkl', 'reward.pkl']
+    norm_names = ['issue.pkl', 'reward_vote.pkl', 'budget_vote.pkl']
+
     def __init__(self, yyyymm, budget_sheet, rewards_sheet):
         self.yyyymm = yyyymm
         self.budget_sheet = budget_sheet
@@ -112,21 +94,11 @@ class BigSheet(object):
         logging.info('sheets: %s', xls.keys())
         return cls(yyyymm, xls[budget_pp], xls[rewards_pp])
 
-    def to_pickles(self, data_dir):
-        save_pickles(data_dir, [
+    def to_cache(self, cache):
+        cache.save_sheets([
             ('budget.pkl', self.budget_sheet),
             ('reward.pkl', self.rewards_sheet)
         ])
-
-    @classmethod
-    def read_pickles(cls, data_dir, yyyymm):
-        logging.info('reading budget...')
-        sheets = []
-        for fname in ['budget.pkl', 'reward.pkl']:
-            with (data_dir / fname).open('rb') as bfp:
-                sheets.append(pd.read_pickle(bfp))
-        [b, r] = sheets
-        return cls(yyyymm, b, r)
 
     def issues(self,
                hd_rows=3,
@@ -139,7 +111,7 @@ class BigSheet(object):
         issue.num = issue.num.astype(int)
         issue.set_index('num', inplace=True)
         issue['repo'] = repo
-        issue = issue.drop('status', axis=1)  # TODO: add issue.status column in DB
+        # issue = issue.drop('status', axis=1)
         log.info('issues:\n%s', issue.head())
         return issue
 
@@ -227,6 +199,19 @@ class BigSheet(object):
         return pd.concat(out)
 
     @classmethod
+    def normalize(cls, data_cache, yyyymm):
+        [budget, reward] = data_cache.read(BigSheet.denorm_names)
+        big = BigSheet(yyyymm, budget, reward)
+        issues = big.issues()
+        budget_votes = big.budget_votes(yyyymm)
+        reward_votes = big.reward_votes(yyyymm)
+        data_cache.save_sheets([
+            ('issue.pkl', issues),
+            ('reward_vote.pkl', reward_votes),
+            ('budget_vote.pkl', budget_votes),
+        ])
+
+    @classmethod
     def only_known_users(cls, df, login, name_cols):
         ix_cols = df.index.names
         df = df.reset_index()
@@ -236,6 +221,32 @@ class BigSheet(object):
                 log.warn('unkonwn %s:\n%s', nc, df[~ok])
             df = df[ok]
         return df.set_index(ix_cols)
+
+    @classmethod
+    def insert(cls, con, data_cache):
+        dfs = DataCache.read(cls.norm_names)
+        [issues, reward_votes, budget_votes] = dfs
+
+        users = pd.read_sql('select login from github_users', con=con)
+
+        budget_votes = cls.only_known_users(
+            budget_votes, users.login, ['voter'])
+        reward_votes = cls.only_known_users(
+            reward_votes, users.login, ['voter', 'worker'])
+        table_info = [
+            ('issue', issues),
+            ('reward_vote', reward_votes),
+            ('budget_vote', budget_votes),
+        ]
+        # delete in reverse order
+        for table_name, _ in reversed(table_info):
+            log.info('delete from %s...', table_name)
+            con.execute('delete from ' + table_name)  # ISSUE: truncate?
+
+        for table_name, data in table_info:
+            log.info('insert %d into %s...', len(data), table_name)
+            data.to_sql(
+                table_name, con=con, if_exists='append')
 
 
 def stack(df, cols):

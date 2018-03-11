@@ -121,13 +121,11 @@ class conf_ApplicationDelegate {
 			{
 				$discordOauth = new discordOauthClass();
 				#validate the user
-				if($discordOauth->checkIfUserValidCoopMember() === True)
-				{
+				$discordUser = $discordOauth->checkIfUserValidCoopMember();  # or die trying
                     global $ini_array;
 					#then save the validation flag to database
-					$user->setValue($ini_array['verified_coop_column'], 1);
+					$user->setValue($ini_array['verified_coop_column'], intval($discordUser->getId()));
                     $user->save(); 
-				}
 			}
 		}
     }

@@ -1,14 +1,20 @@
 ;; http://xataface.com/wiki/How_to_build_a_PHP_MySQL_Application_with_4_lines_of_code
 
-title="DRAFT! RAM Budget and Rewards"
+title="RChain Bounty Budget and Rewards (BETA)"
 [_xataface_installation]
-xataface_location=xataface/dataface-public-api.php
 
 [_database]
-host=localhost
-name=xataface
-user=xataface
-password=
+host={{ db_host }}
+name={{ db_name }}
+user={{ db_user }}
+password={{ db_password }}
+;; avoid:
+;; PHP Fatal error:  Uncaught Error: Call to undefined function mysql_connect()
+;; http://xataface-tips.blogspot.ca/2014/06/using-mysqli-in-xataface.html
+driver=mysqli
+
+[_tables]
+;; This section lists the tables to include in your application menu
 driver=mysqli
 
 [_tables]
@@ -41,20 +47,11 @@ verified_coop_column = verified_coop
 enabled = 1
 
 [github_oauth]
-github_app_client_id = 
-github_app_client_secret = 
+github_app_client_id = {{ gh_client_id }}
+github_app_client_secret = {{ gh_client_secret }}
 github_api_url = https://github.com/login/oauth/access_token
-github_include_email_scope = false
 
 [discord_oauth]
-discord_coop_role = 
-rchain_guild_id = 
-discord_client_id = 
-discord_client_secret = 
-discord_redirect_uri = 
-discord_bot_token = 
-
-    
-
-;; [Tue Jan 30 18:01:06.515269 2018] [:error] [pid 13693] [client 127.0.0.1:55170] PHP Fatal error:  Uncaught Error: Call to undefined function mysql_connect() in /var/www/html/rchain-bees-ants/xataface-2.1.3/xf/db/drivers/mysql.php:2\nStack trace:\n#0 /var/www/html/rchain-bees-ants/xataface-2.1.3/Dataface/Application.php(602): xf_db_connect('localhost', 'dconnolly', 'Aim1b')\n#1 /var/www/html/rchain-bees-ants/xataface-2.1.3/Dataface/Application.php(1078): Dataface_Application->Dataface_Application(Array)\n#2 /var/www/html/rchain-bees-ants/xataface-2.1.3/public-api.php(58): Dataface_Application::getInstance(NULL)\n#3 /var/www/html/rchain-bees-ants/index.php(6): df_init('/var/www/html/r...', 'xataface')\n#4 {main}\n  thrown in /var/www/html/rchain-bees-ants/xataface-2.1.3/xf/db/drivers/mysql.php on line 2
-;; http://xataface-tips.blogspot.ca/2014/06/using-mysqli-in-xataface.html
+discord_coop_role = {{ discord_coop_role }}
+rchain_guild_id = {{ rchain_guild_id }}
+discord_client_id = {{ discord_client_id }}

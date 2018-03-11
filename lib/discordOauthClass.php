@@ -72,37 +72,22 @@
 			$discordHelperClass = new discordHelperClass();
 			
 			$discord = new DiscordClient(['token' => $this->ini_array['discord_bot_token']]); // Token is required
-			
-			#get all the roles in the guild
-			try{
-			$roles_array = $discord->guild->getGuildRoles(['guild.id' => intval($this->ini_array['rchain_guild_id'])]);
+			$mem_params = ['guild.id' => intval($this->ini_array['rchain_guild_id']),
+				       'user.id' => intval($user->getId())];
+			try {
+			  $member = $discord->guild->getGuildMember($mem_params);
 			}catch (Exception $e) {
-				$this->printError('Invalid guild id');
+				$this->printError('cannot getGuildMember');
 			}
-			
-			#Find the required role name, and get its id
-			$role_id_required = $discordHelperClass->getRoleIdFromString($roles_array, $this->ini_array['discord_coop_role']);
+			$coop_member_role = intval($this->ini_array['discord_coop_role']);
 
-			#Get a list of members, along with their role id's
-			$guild_members = $discord->guild->listGuildMembers(['guild.id' => intval($this->ini_array['rchain_guild_id']), 'limit' => 1000]);
-			
-			#get the roles of the authorized member/user
-			$user_roles = $discordHelperClass->getRolesOfUser($guild_members, $user->getUsername(), $user->getDiscriminator());
-			if($user_roles === False)
+			if(! in_array($coop_member_role, $member->roles))
 			{
-				$this->printError("Your discord user is not in the RChain guild");
+				$this->printError("Your discord user is not in the coop member role in the RChain discord guild.");
 			}
 
-			#now check the member has the required role
-			$is_user_coop_member = $discordHelperClass->checkIfUserHasRoleId($user_roles, $role_id_required);
-
-			if($is_user_coop_member === False)
-			{
-				$this->printError("Your discord user is not in the coop role in the RChain discord guild");
-			}
-			
 			#the user is confirmed to be a coop member now. Lets add it to the database
-			return True;
+			return $user;
 		}
 		
 		public function printError($error)

@@ -1,0 +1,27 @@
+---
+
+- name: check for composer
+  stat:
+    path: "{{ install_dir }}/bin/composer"
+  register: composer_bin
+- name: create bin directory
+  file:
+    path: "{{ install_dir }}/bin"
+    state: directory
+  when: not composer_bin.stat.exists
+- name: download PHP composer
+  shell: "php composer_download.php"
+  args:
+    chdir: "{{ install_dir }}"
+  when: not composer_bin.stat.exists
+- name: setup PHP composer
+  shell: "php composer-setup.php --install-dir=bin --filename=composer"
+  args:
+    chdir: "{{ install_dir }}"
+  when: not composer_bin.stat.exists
+- name: compose PHP deps
+  composer:
+    command: install
+    working_dir: "{{ install_dir }}"
+  environment:
+    PATH: "{{ install_dir }}/bin:/usr/local/bin:/usr/bin:/bin"

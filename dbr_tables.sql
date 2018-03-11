@@ -1,13 +1,21 @@
+drop table if exists trust_cert;
+drop table if exists invoice_info;
+drop table if exists reward_vote;
+drop table if exists budget_vote;
+drop table if exists github_users;
+drop table if exists admin_settings;
+drop table if exists pay_period;
+
 drop table if exists issue;
 create table issue (
   num integer primary key,
   title varchar(1024) not null,
-  status varchar(32) not null,
+  updatedAt timestamp,
+  `state` varchar(32) not null,
   repo varchar(1024) not null
 )
 ;
 
-drop table if exists pay_period;
 
 create table pay_period (
         start_date date primary key,
@@ -19,7 +27,6 @@ create table pay_period (
         )
     ;
 
-drop table if exists admin_settings;
 create table admin_settings (
         id integer primary key, --  auto_increment
         current_pay_period date not null,
@@ -28,7 +35,25 @@ create table admin_settings (
         )
     ;
 
-drop table if exists budget_vote;
+
+CREATE TABLE `github_users` (
+  `login` varchar(22) NOT NULL,
+  `followers` bigint(20) DEFAULT NULL,
+  `name` varchar(31) DEFAULT NULL,
+  `location` varchar(39) DEFAULT NULL,
+  `email` varchar(30) DEFAULT NULL,
+  `bio` varchar(161) DEFAULT NULL,
+  `websiteUrl` varchar(42) DEFAULT NULL,
+  `avatarUrl` varchar(57) DEFAULT NULL,
+  `permission` varchar(9) DEFAULT NULL,
+  `createdAt` datetime DEFAULT NULL,
+  `session_token` varchar(64) DEFAULT NULL,
+  `verified_coop` bigint(20) unsigned DEFAULT NULL,
+  PRIMARY KEY (`login`),
+  KEY `ix_github_users_login` (`login`)
+)
+;
+
 
 create table budget_vote (
   pay_period date not null,
@@ -43,7 +68,6 @@ create table budget_vote (
 )
 ;
 
-drop table if exists reward_vote;
 
 create table reward_vote (
   pay_period date not null,
@@ -61,8 +85,6 @@ create table reward_vote (
 ;
 
 
-drop table if exists invoice_info;
-
 create table invoice_info (
   pay_period date not null,
   worker varchar(64) not null,
@@ -74,8 +96,6 @@ create table invoice_info (
   )
 ;
 
-
-drop table if exists trust_cert;
 
 create table trust_cert (
         subject varchar(64) not null,

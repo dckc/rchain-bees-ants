@@ -25,7 +25,7 @@ if(checkForDiscordRedirect())
 
 
 // Initialize Xataface framework
-df_init(__FILE__, 'xataface')->display();
+df_init(__FILE__, 'xataface-2.1.3')->display();
     // first parameter is always the same (path to the current script)
     // 2nd parameter is relative URL to xataface directory (used for CSS files and javascripts)
   

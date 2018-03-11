@@ -1,0 +1,18 @@
+[03-Mar-2018 22:49:29 America/Los_Angeles] PHP Fatal error:  Uncaught exception 'Exception' with message 'Error performing mysql query to get column information from table 'authorities'.  The mysql error returned was : 'Table 'xataface.authorities' doesn't exist' in /WWW/hyperevo/rchain-dbr/xataface/Dataface/Table.php:581
+Stack trace:
+#0 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Table.php(503): Dataface_Table->Dataface_Table('authorities', Object(mysqli), false)
+#1 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Relationship.php(457): Dataface_Table::loadTable('authorities', Object(mysqli))
+#2 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Relationship.php(413): Dataface_Relationship->_normalizeColumns()
+#3 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Relationship.php(111): Dataface_Relationship->_init(Array)
+#4 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Table.php(3758): Dataface_Relationship->Dataface_Relationship('github_users', 'Rating', Array)
+#5 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Table.php(4005): Dataface_Table->_loadRelationshipsIniFile()
+#6 /WWW/hyperevo/rchain-db in /WWW/hyperevo/rchain-dbr/xataface/Dataface/Table.php on line 581
+[03-Mar-2018 22:49:35 America/Los_Angeles] PHP Fatal error:  Uncaught exception 'Exception' with message 'Error performing mysql query to get column information from table 'authorities'.  The mysql error returned was : 'Table 'xataface.authorities' doesn't exist' in /WWW/hyperevo/rchain-dbr/xataface/Dataface/Table.php:581
+Stack trace:
+#0 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Table.php(503): Dataface_Table->Dataface_Table('authorities', Object(mysqli), false)
+#1 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Relationship.php(457): Dataface_Table::loadTable('authorities', Object(mysqli))
+#2 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Relationship.php(413): Dataface_Relationship->_normalizeColumns()
+#3 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Relationship.php(111): Dataface_Relationship->_init(Array)
+#4 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Table.php(3758): Dataface_Relationship->Dataface_Relationship('github_users', 'Rating', Array)
+#5 /WWW/hyperevo/rchain-dbr/xataface/Dataface/Table.php(4005): Dataface_Table->_loadRelationshipsIniFile()
+#6 /WWW/hyperevo/rchain-db in /WWW/hyperevo/rchain-dbr/xataface/Dataface/Table.php on line 581

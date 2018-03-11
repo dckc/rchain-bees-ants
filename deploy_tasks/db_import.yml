@@ -1,0 +1,22 @@
+---
+- name: ensure mysql 5.7 is available
+  apt:
+    name: mysql-server=5.7.*
+    # update_cache: yes
+- name: ensure mysql_config is available
+  apt:
+    name: libmysqlclient-dev
+- name: ensure python mysql support is available
+  apt:
+    name: python-mysqldb
+- name: "Ensure {{ db_name }} DB exists"
+  mysql_db:
+    name: "{{ db_name }}"
+    state: import
+    target: "{{ install_dir }}/dbr_tables.sql"
+- name: "Ensure {{ db_name }} user exists"
+  mysql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    priv: "{{ db_name }}.*:ALL"
+    state: present

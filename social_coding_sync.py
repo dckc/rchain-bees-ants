@@ -1,6 +1,8 @@
 """social_coding_sync -- sync users, issues, endorsements from github
 
 Usage:
+  social_coding_sync [options] issues_fetch
+  social_coding_sync [options] issues_insert
   social_coding_sync [options] reactions_get
   social_coding_sync [options] trust_seed
   social_coding_sync [options] trusted
@@ -36,23 +38,52 @@ def main(argv, cwd, build_opener, create_engine):
     opt = docopt(__doc__.split('\n..', 1)[0], argv=argv[1:])
     log.debug('opt: %s', opt)
 
-    cache = cwd / opt['--cache']
-
     def db():
+        log.info('DB access: %s', opt['--db-access'])
         with (cwd / opt['--db-access']).open('r') as txt_in:
             url = json.load(txt_in)["url"]
         return create_engine(url)
 
-    if opt['reactions_get']:
-        Reactions.get(build_opener(),
-                      cred_path=cwd / opt['--repo-rd'],
-                      dest=cache / 'reactions.json')
+    def tok():
+        log.info('GitHub repo read token file: %s', opt['--repo-rd'])
+        with (cwd / opt['--repo-rd']).open() as cred_fp:
+            return json.load(cred_fp)['token']
+
+    def cache_open(filename, mode, what):
+        path = cwd / opt['--cache'] / filename
+        log.info('%s %s to %s',
+                 'Writing' if mode == 'w' else 'Reading',
+                 what, path)
+        return path.open(mode=mode)
+
+
+    if opt['issues_fetch']:
+        issues = Issues(build_opener(), tok())
+        issueInfo = issues.fetch_pages()
+        with cache_open('issues.json', mode='w',
+                        what='%d pages of issues' % len(issueInfo)) as fp:
+            json.dump(issueInfo, fp)
+
+    elif opt['issues_insert']:
+        with cache_open('issues.json', mode='r',
+                        what='issueInfo') as fp:
+            issuePages = json.load(fp)
+        Issues.db_sync(db(), Issues.data(issuePages))
+
+    elif opt['reactions_get']:
+        rs = Reactions(build_opener(), tok())
+        info = rs.fetch(dest=cache / 'reactions.json')
+        log.info('%d reactions saved to %s',
+                 len(info['repository']['issues']['nodes']), opt['--cache'])
+
     elif opt['trust_seed']:
+        log.info('using cache %s to get saved reactions', opt['--cache'])
         with (cache / 'reactions.json').open('r') as fp:
             reaction_info = json.load(fp)
         dbr = db()
         reactions = Reactions.normalize(reaction_info)
         TrustCert.seed_from_reactions(reactions, dbr).reset_index()
+
     elif opt['trusted']:
         dbr = db()
         trusted = pd.concat([
@@ -67,16 +98,11 @@ def main(argv, cwd, build_opener, create_engine):
 
 class QuerySvc(object):
     endpoint = 'https://api.github.com/graphql'
+    query = "query { viewer { login } }"
 
     def __init__(self, urlopener, token):
         self.__urlopener = urlopener
         self.__token = token
-
-    @classmethod
-    def make(cls, cred_path, web_ua):
-        with cred_path.open() as cred_fp:
-            repoRd = json.load(cred_fp)['token']
-        return cls(web_ua, repoRd)
 
     def runQ(self, query, variables={}):
         req = Request(
@@ -95,25 +121,18 @@ class QuerySvc(object):
             raise IOError(body['errors'])
         return body['data']
 
+    def fetch(self, dest=None):
+        info = self.runQ(self.query)
+        if dest:
+            with dest.open('w') as data_fp:
+                json.dump(info, data_fp)
+        return info
 
-class Reactions(object):
+
+class Reactions(QuerySvc):
     query = pkg.resource_string(__name__, 'reactions.graphql').decode('utf-8')
 
     endorsements = ['HEART', 'HOORAY', 'LAUGH', 'THUMBS_UP']
-
-    @classmethod
-    def get(cls, web_ua, cred_path, dest):
-        with cred_path.open() as cred_fp:
-            repoRd = json.load(cred_fp)['token']
-        qs = QuerySvc(web_ua, repoRd)
-        # login = qs.runQ('query { viewer { login }}')
-        # log.info(login)
-
-        reaction_info = qs.runQ(Reactions.query)
-        with dest.open('w') as data_fp:
-            json.dump(reaction_info, data_fp)
-        log.info('%d reactions saved to %s',
-                 len(reaction_info['repository']['issues']['nodes']), dest)
 
     @classmethod
     def normalize(cls, info):
@@ -131,6 +150,64 @@ class Reactions(object):
         ])
         reactions.createdAt = pd.to_datetime(reactions.createdAt)
         return reactions
+
+
+class Issues(QuerySvc):
+    query = pkg.resource_string(__name__, 'issues.graphql').decode('utf-8')
+
+    def _page_q(self, cursor, issueState=None):
+        maybeParens = lambda s: '(' + s + ')' if s else ''
+        fmtParams = lambda params: ', '.join(
+            part
+            for k, (val, ty) in params.items()
+            for part in ([('$' + k + ':' + ty)] if val else []))
+        paramInfo = {'cursor': [cursor, 'String!'],
+                     'issueState': [issueState, '[IssueState!]']}
+        variables = {k: v for (k, [v, _t]) in paramInfo.items()}
+        return variables, (
+            self.query
+            .replace('PARAMETERS', maybeParens(fmtParams(paramInfo)))
+            .replace('CURSOR', ' after: $cursor' if cursor else '')
+            .replace('STATES', ' states: $issueState' if issueState else ''))
+
+    def fetch_pages(self):
+        pageInfo = {'endCursor': None}
+        pages = []
+        while 1:
+            variables, query = self._page_q(pageInfo['endCursor'])
+            info = self.runQ(query, variables)
+            pageInfo = info.get('repository', {}).get('issues', {}).get('pageInfo', {})
+            log.info('issues pageInfo: %s', pageInfo)
+            pages.append(info)
+            if not pageInfo.get('hasNextPage', False):
+                return pages
+
+    @classmethod
+    def data(self, pages,
+             repo='rchain/bounties'):
+        df = pd.DataFrame([
+            dict(num=node['number'],
+                 title=node['title'],
+                 updatedAt=node['updatedAt'],
+                 state=node['state'],
+                 repo=repo)
+            for page in pages
+            for node in page['repository']['issues']['nodes']
+        ])
+        # df['updatedAt'] = pd.to_datetime(df.updatedAt)
+        df['updatedAt'] = df.updatedAt.str.replace('T', ' ').str.replace('Z', '')
+        return df
+
+    @classmethod
+    def db_sync(cls, db, data):
+        with db.begin() as trx:
+            trx.execute('''
+            insert into issue (num, title, updatedAt, state, repo)
+            values (%(num)s, %(title)s, %(updatedAt)s, %(state)s, %(repo)s)
+            on duplicate key update
+            num = values(num), title=values(title), updatedAt=values(updatedAt),
+            state=values(state), repo=values(repo)
+            ''', data.to_dict(orient='records'))
 
 
 class TrustCert(object):

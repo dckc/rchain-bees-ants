@@ -1,0 +1,9 @@
+---
+  - name: ensure python pip is available
+    apt:
+      name: python3-pip
+  - name: ensure sqlalchemy etc. are available
+    pip:
+      chdir: "{{ install_dir }}"
+      requirements: requirements.txt
+      executable: pip3

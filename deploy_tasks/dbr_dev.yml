@@ -1,0 +1,6 @@
+---
+
+- name: install dev version of rchain-dbr source
+  synchronize:
+    src: ./
+    dest: "{{ install_dir }}/"
