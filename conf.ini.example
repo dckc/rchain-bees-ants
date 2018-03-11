@@ -49,7 +49,7 @@ github_app_client_secret = {{ gh_client_secret }}
 github_api_url = https://github.com/login/oauth/access_token
 
 [discord_oauth]
-discord_coop_role_id = {{ discord_coop_role }}
+discord_coop_role_id = {{ discord_coop_role_id }}
 rchain_guild_id = {{ rchain_guild_id }}
 discord_client_id = {{ discord_client_id }}
 discord_client_secret = {{ discord_client_secret }}
