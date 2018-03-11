@@ -1,9 +1,9 @@
 <?php
 //error reporting for debugging
-ini_set('display_errors', 1);
-error_reporting(1);
-ini_set('error_reporting', E_ALL);
-$ini_array = parse_ini_file("conf.ini");
+// ini_set('display_errors', 1);
+// error_reporting(1);
+// ini_set('error_reporting', E_ALL);
+// $ini_array = parse_ini_file("conf.ini");
 
 // Include the Xataface API
 require_once $ini_array['xataface_folder'] . '/dataface-public-api.php';
