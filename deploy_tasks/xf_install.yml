@@ -11,8 +11,7 @@
   register: xf
 - name: "Download xataface 2.1.3"
   get_url:
-    # TODO: get the URL of the zip for 65e2cf1
-    url: https://github.com/shannah/xataface/archive/2.1.3.zip
+    url: https://github.com/shannah/xataface/archive/65e2cf12ddb6a1b075667f53c3f854002ac3d5fe.zip
     dest: /tmp/xataface-2.1.3.zip
     checksum: sha256:c69a17724ae8cc35f9bc26a9e61d464262f64d962da9740cb1eebb2ee57afab9
     validate_certs: no
