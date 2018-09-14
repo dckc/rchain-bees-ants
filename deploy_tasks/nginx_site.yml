@@ -8,7 +8,7 @@
       - uwsgi-plugin-python3
 
   - name: install dbr_aux uwsgi service config file
-    copy: src=dbr_aux.service
+    copy: src=trust_sync/dbr_aux.service
           dest=/etc/systemd/system/dbr_aux.service
   - name: start dbr_aux uwsgi service
     systemd: name=dbr_aux state=started

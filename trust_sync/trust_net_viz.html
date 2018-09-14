@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+  <head>
+    <title>RChain Community Trust Network</title>
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis-network.min.css" rel="stylesheet" type="text/css" />
+
+    <style type="text/css">
+      .net-diagram {
+        width: 85%;
+        height: 600px;
+        border: 1px solid lightgray;
+      }
+
+      .key li { display: inline-block; text-shadow: 1px 1px grey }
+      .observer { color: #f0f0f0 }
+      .apprentice { color: khaki }
+      .journeyer { color: orange }
+      .master { color: grey }
+    </style>
+    <link href="tabs.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body>
+    <div class="nav"><a href="/">RChain Bounty Rewards</a></div>
+
+    <h1>
+      RChain Community Trust Network
+    </h1>
+
+    <p>Key:</p>
+    <ol class="key">
+      <li><em class="observer">observer</em></li>
+      <li><em class="apprentice">apprentice</em></li>
+      <li><em class="journeyer">journeyer</em></li>
+      <li><em class="master">master</em></li>
+    </ol>
+    <p><em>Learn more <a href="https://github.com/rchain/bounties/wiki/Trust-Ratings"
+			 >about the trust ratings</a>.</em></p>
+
+    <p>All trust flows from the <code>&lt;superseed&gt;</code> through
+    the members of the Task Approval Committee (TAC). The trust metric
+    evaluation is a network maximum flow solver. The people reached by
+    the flow are those accepted by the trust metric. Edges are
+    labelled with an amount of flow resulting from the
+    computation. With the three levels, the maxflow is computed three
+    times: once with just the Master certs, once with Master and
+    Journeyer, and once with all three. Node colors indicate the final
+    rating; that is: the maximum level at which the person was
+    accepted.</p>
+    
+    <address>
+      source code: <a href="https://github.com/dckc/rchain-dbr">rchain-dbr</a> by <strong>dckc</strong> and friends
+      for the <a href='https://www.rchain.coop/'>RChain Cooperative</a>
+    </address>
+    <form action='/aux/trust_cert' method='post'>
+      <input type='submit' value='Update Trust Ratings' />
+    </form>
+    <hr />
+
+    <div class="tabbed-area">
+      <div id="tab0">
+        <a href="#tab0">Certs</a>
+        <div id="net-0" class="net-diagram">
+          <em>stand by...</em><strong id="err"></strong>
+        </div>
+      </div>
+
+      <div id="tab1">
+        <a href="#tab1">Apprentice</a>
+        <div id="net-1" class="net-diagram">
+          <em>stand by...</em></strong>
+        </div>
+      </div>
+
+      <div id="tab2">
+        <a href="#tab2">Journeyer</a>
+        <div id="net-2" class="net-diagram"><em>stand by...</em></div>
+      </div>
+
+      <div id="tab3">
+        <a href="#tab3">Master</a>
+        <div id="net-3" class="net-diagram"><em>stand by...</em></div>
+      </div>
+    </div>
+    </div>
+
+    <script type="text/javascript" src="net_viz.js"></script>
+    <script type="text/javascript">
+      const ratings = [1, 2, 3];
+      const s_net = makeSocialNetwork(() => new XMLHttpRequest());
+      const byId = i => document.getElementById(i);
+      s_net.fetch().then(net => {
+        s_net.drawCerts(net, byId('net-0'));
+        ratings.forEach((r) => { s_net.drawFlow(net, r, byId(`net-${r}`)); } );
+      })
+      .catch(oops => {
+        document.getElementById('err').textContent = oops.message;
+      });
+    </script>
+
+  </body>
+</html>

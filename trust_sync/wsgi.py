@@ -22,7 +22,7 @@ def build_app():
 
     _configure_logging()
     app = socsync.WSGI_App(
-        Path('conf.ini'),
+        Path('../conf.ini'),
         datetime.now, run, build_opener, NamedTemporaryFile,
         create_engine)
     wrap = error_middleware(format_exc, app)

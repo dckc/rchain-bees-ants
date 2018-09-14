@@ -5,7 +5,8 @@ After=network.target
 [Service]
 User=www-data
 Group=www-data
-WorkingDirectory=/var/www/html
+# TODO: parameterize htdocs
+WorkingDirectory=/var/www/html/trust_sync
 ExecStart=/usr/bin/uwsgi --ini dbr_aux.ini
 
 [Install]

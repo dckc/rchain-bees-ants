@@ -63,12 +63,9 @@ def make_claims_table(claims, month, db):
 
 def import_invoice_summary(pay_period, rd, db):
     data = pd.read_csv(rd,
-                       skiprows=2,
-                       parse_dates=['pay_period', 'Unnamed: 16'])
+                       parse_dates=['pay_period'])
     data = data[data.pay_period == pay_period]
     _log(data.columns)
-    data = data[data.columns[16:21]]
-    data.columns = ['pay_period', 'worker', 'issues', 'reward_usd', 'RHOC']
     _log(data.head(2))
     data.to_sql('import_invoice_summary', db,
                 if_exists='replace', index=False)

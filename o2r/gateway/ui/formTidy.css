@@ -1,0 +1,35 @@
+/* ack: https://stackoverflow.com/a/10868749 */
+
+div.main {
+    margin-left: 10%
+}
+
+fieldset.tidy {
+    width: 80%;
+}
+
+fieldset.tidy label b {
+    display: inline-block;
+    float: left;
+    clear: left;
+    width: 10em;
+    text-align: right;
+    margin-right: 1em;
+    padding: 0.2em;
+}
+
+fieldset.tidy input {
+    display: inline-block;
+    float: left;
+}
+
+fieldset.tidy textarea {
+    display: inline-block;
+    float: left;
+}
+
+fieldset.tidy select {
+    display: inline-block;
+    float: left;
+}
+

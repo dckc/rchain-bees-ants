@@ -1,0 +1,35 @@
+{
+  "name": "rchain-dbr",
+  "version": "0.1.0",
+  "description": "RChain Distributed Budgets and Rewards",
+  "main": "server.js",
+  "dependencies": {
+    "Capper": "dckc/Capper#master",
+    "docopt": "^0.6.2",
+    "express": "^4.16.3",
+    "grpc": "^1.13.0",
+    "passport": "^0.4.0",
+    "passport-discord": "^0.1.3",
+    "passport-github": "^1.1.0",
+    "q": "~1.0.1",
+    "rchain-api": "github:dckc/RChain-API",
+    "tweetnacl": "^1.0.0"
+  },
+  "devDependencies": {
+    "flow-bin": "^0.75.0",
+    "flow-typed": "^2.4.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dckc/rchain-dbr.git"
+  },
+  "author": "Dan Connolly",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/dckc/rchain-dbr/issues"
+  },
+  "homepage": "https://github.com/dckc/rchain-dbr#readme"
+}

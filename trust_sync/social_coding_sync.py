@@ -15,7 +15,7 @@ Usage:
 Options:
   --config=FILE     config file with github_repo.read_token
                     and _databse.db_url
-                    [default: conf.ini]
+                    [default: ../conf.ini]
   --seed=NAMES      login names (comma separated) of trust seed
                     [default: dckc,deannald,PatrickM727]
   --good_nodes=XS   qty of good nodes for each rating (comma separated)
@@ -123,9 +123,11 @@ def main(argv, cwd, now, run, build_opener, create_engine, NamedTemporaryFile):
         log.info('trust count by rating:\n%s', by_rating)
 
     elif opt['trust_view']:
-        states = TrustCert.viz(io.db())
+        certs = TrustCert.get_certs(io.db())
+        seed, good_nodes = TrustCert.doc_params(opt)
+        info = TrustCert.viz(certs, seed, good_nodes)
         with (cwd / opt['--view']).open('w') as fp:
-            json.dump(states, fp, indent=2)
+            json.dump(info, fp, indent=2)
 
     elif opt['db_bak']:
         with io.bak_file(now, cwd / opt['--bak-dir']) as dest:
@@ -227,7 +229,9 @@ class WSGI_App(object):
         return parse_qs(request_body)
 
     def trust_net(self, start_response):
-        net = TrustCert.viz(self.__io.db())
+        certs = TrustCert.get_certs(self.__io.db())
+        seed, good_nodes = TrustCert.doc_params()
+        net = TrustCert.viz(certs, seed, good_nodes)
         start_response('200 OK', JSON)
         return [json.dumps(net, indent=2).encode('utf-8')]
 
@@ -579,18 +583,26 @@ class TrustCert(object):
     table = 'trust_cert'
 
     ratings = [1, 2, 3]
+    superseed = '<superseed>'
 
     @classmethod
     def update_results(cls, dbr, seed, good_nodes):
-        trusted = pd.concat([
-            cls.trust_flow(dbr, seed, good_nodes[rating - 1], rating).reset_index()
-            for rating in TrustCert.ratings])
-        trusted = trusted.groupby('login').max()
-        trusted = trusted.sort_index()
-        trusted = trusted[trusted.index != '<superseed>']
+        certs = cls.get_certs(dbr)
+        trusted = cls.trust_ratings(certs, seed, good_nodes)
+
+        last_cert = certs.groupby('subject')[['cert_time']].max()
+        trusted = trusted.merge(last_cert,
+                                left_index=True, right_index=True, how='left')
         trusted.to_sql('authorities', if_exists='replace', con=dbr,
                        dtype=noblob(trusted))
         return trusted
+
+    @classmethod
+    def get_certs(cls, dbr):
+        return pd.read_sql('''
+            select voter, subject, rating, cert_time
+            from {table}
+        '''.format(table=cls.table), dbr)
 
     @classmethod
     def _certs_from_reactions(cls, reactions, users):
@@ -660,79 +672,218 @@ class TrustCert(object):
         return seed, good_nodes
 
     @classmethod
-    def trust_flow(cls, dbr, seed, good_qty,
-                   rating=1, max_level=4):
-        g = net_flow.NetFlow()
+    def trust_ratings(cls, certs, seed, good_nodes):
+        """Compute trust ratings.
 
-        last_cert = pd.read_sql('''
-            select subject, max(cert_time) last_cert_time
-            from {table}
-            where rating >= {rating}
-            group by subject
-        '''.format(table=cls.table, rating=rating), dbr).set_index('subject')
+        >>> certs = MockIO.certs()
+        >>> seed = certs.voter[:2]
+        >>> TrustCert.trust_ratings(certs, seed, [18, 9, 5])
+        ... # doctest: +NORMALIZE_WHITESPACE
+                 rating
+        login
+        aunt-q        3
+        aunt-x        1
+        aunt-y        1
+        col-d         2
+        col-p         1
+        col-x         1
+        judge-p       3
+        judge-x       3
+        judge-z       2
+        mr-d          1
+        mr-p          2
+        mr-x          1
+        mr-y          3
+        mr-z          2
+        ms-d          2
+        ms-q          1
+        ms-z          1
+        """
+        def trusted_at(rating):
+            edges = certs[certs.rating >= rating]
+            who, _why = cls.net_flow(edges, seed, good_nodes[rating - 1])
+            who['rating'] = rating
+            return who
 
-        edges = pd.read_sql('''
-            select distinct voter, subject
-            from {table}
-            where rating >= {rating}
-        '''.format(table=cls.table, rating=rating), dbr)
-        for _, e in edges.iterrows():
-            g.add_edge(e.voter, e.subject)
-
-        superseed = "<superseed>"
-        for s in seed:
-            g.add_edge(superseed, s)
-
-        # "The capacity of the seed should be equal to
-        # the number of good servers in the network,
-        # and the capacity of each successive level should be
-        # the previous level's capacity divided by the average outdegree."
-        out_degree = pd.read_sql('''
-            select avg(out_degree) avg from (
-              select voter, count(*) out_degree
-              from {table}
-              where rating >= {rating}
-              group by voter
-            ) by_voter
-        '''.format(table=cls.table, rating=rating), dbr).iloc[0]
-
-        capacities = [ceil(good_qty / out_degree.avg ** level)
-                      for level in range(max_level + 1)]
-        flow = g.max_flow_extract(superseed, capacities)
-        ok = pd.DataFrame([
-            dict(login=login)
-            for login, value in flow.items()
-            if login != 'superseed' and value > 0
-        ]
-        ).set_index('login')
-        ok['rating'] = rating
-        return ok.merge(last_cert,
-                        left_index=True, right_index=True, how='left')
+        trusted = pd.concat([
+            trusted_at(rating)
+            for rating in cls.ratings])
+        trusted = trusted.groupby('login').max()
+        trusted = trusted.sort_index()
+        trusted = trusted[trusted.index != cls.superseed]
+        return trusted
 
     @classmethod
-    def viz(cls, dbr):
-        users = pd.read_sql(
-            '''
-            select login, convert(verified_coop, char) member_snowflake
-                 , coalesce(rating, -1) as rating, rating_label, weight, sig
-            from user_flair u
-            order by u.login
-            ''', dbr)
-        nodes = [dict(u, id=ix,
-                      rating=None if u.rating < 0 else u.rating)
-                 for ix, u in users.iterrows()]
-        certs = pd.read_sql(
-            'select voter, subject, coalesce(rating, -1) rating from trust_cert', dbr)
-        users.index.name = 'id'
-        byLogin = users.reset_index().set_index('login')
-        certs['from_'] = byLogin.loc[certs.voter].id.values
-        certs['to_'] = byLogin.loc[certs.subject].id.values
-        edges = [{'from': c.from_, 'to': c.to_,
-                  'rating': c.rating if c.rating >= 0 else None }
-                 for _, c in certs.iterrows()]
+    def net_flow(cls, certs, seed, good_qty):
+        '''Evaluate trust metric for one rating.
+
+        @param certs: DataFrame with .voter, .subject
+        @param seed: trust seed voters
+        @param good_qty: targe number of trusted subjects
+
+        In a community of people, suppose some of them have certified
+        each other with trust ratings:
+
+        >>> certs = MockIO.certs()
+        >>> certs.head(3)
+           rating subject    voter
+        0       2    mr-z  judge-x
+        1       2    mr-p  judge-p
+        2       2  aunt-p    col-p
+        >>> sorted(certs.rating.unique())
+        [1, 2, 3]
+
+        And suppose a couple of them are the trusted seed and about
+        30% are to be trusted at journeyer level:
+
+        >>> seed = certs.voter[:2]
+        >>> target = len(certs.voter.unique()) * .30
+
+        Who does the trust metric pick?
+
+        >>> who, why = TrustCert.net_flow(certs, seed, target)
+        >>> len(who), target
+        (9, 8.7)
+        >>> who
+                 login
+        0  <superseed>
+        1       aunt-q
+        2       aunt-x
+        3        col-d
+        4      judge-p
+        5      judge-x
+        6         mr-p
+        7         mr-y
+        8         mr-z
+
+        >>> why
+        ... # doctest: +NORMALIZE_WHITESPACE
+                             flow
+        voter       subject
+        <superseed> judge-p     4
+                    judge-x     4
+        judge-p     aunt-q      1
+                    aunt-x      1
+                    mr-p        1
+        judge-x     col-d       1
+                    mr-y        1
+                    mr-z        1
+
+        Which are the 60% to be trusted at apprentice level?
+
+        >>> target = len(certs.voter.unique()) * .6
+        >>> who, why = TrustCert.net_flow(certs, certs.voter[:3], target)
+        >>> len(who), target
+        (18, 17.4)
+        >>> who.head(5)
+                 login
+        0  <superseed>
+        1       aunt-p
+        2       aunt-q
+        3       aunt-x
+        4       aunt-y
+
+        '''
+        g = net_flow.NetFlow()
+
+        for _, e in certs.iterrows():
+            g.add_edge(e.voter, e.subject)
+
+        for s in seed:
+            g.add_edge(cls.superseed, s)
+
+        detail = g.max_flow(cls.superseed, cls._capacities(certs, good_qty))
+        who = pd.DataFrame([
+            dict(login=login)
+            for login, value in sorted(detail.extract().items())
+            if login != cls.superseed and value > 0
+        ])
+        why = pd.DataFrame(dict(
+            voter=detail.edge_src,
+            subject=detail.edge_dst,
+            flow=detail.edge_flow))
+        why = why[why.flow > 0].set_index(['voter', 'subject'])
+        return who, why.sort_index()
+
+    @classmethod
+    def _capacities(self, certs, good_qty,
+                    max_level=10):
+        """
+        "The capacity of the seed should be equal to
+        the number of good servers in the network,
+        and the capacity of each successive level should be
+        the previous level's capacity divided by the average outdegree."
+        """
+        out_degree = certs.groupby('voter')[['subject']].count()
+        out_avg = out_degree.subject.mean()
+        return [ceil(good_qty / out_avg ** level)
+                for level in range(max_level + 1)]
+
+    @classmethod
+    def viz(cls, certs, seed, good_nodes):
+        """Format trust metric info for visualization.
+
+        >>> certs = MockIO.certs()
+        >>> seed = certs.voter[:2]
+        >>> info = TrustCert.viz(certs, seed, [18, 9, 5])
+        >>> import pprint
+        >>> pprint.pprint(info)
+        ... # doctest: +ELLIPSIS +NORMALIZE_WHITESPACE
+        {'flow': [(1,
+                   [{'index': 0, 'login': '<superseed>'},
+                    {'index': 1, 'login': 'aunt-q'},
+                    {'index': 2, 'login': 'aunt-x'},
+                    ...
+                    {'index': 17, 'login': 'ms-z'}],
+                   [{'flow': 10, 'subject': 'judge-p', 'voter': '<superseed>'},
+                    {'flow': 7, 'subject': 'judge-x', 'voter': '<superseed>'},
+                    {'flow': 1, 'subject': 'aunt-q', 'voter': 'judge-p'},
+                    ...
+                    {'flow': 1, 'subject': 'ms-q', 'voter': 'mr-z'}]),
+                  (2,
+                   ...
+                    {'flow': 1, 'subject': 'mr-z', 'voter': 'judge-x'}]),
+                  (3,
+                   [{'index': 0, 'login': '<superseed>'},
+                    {'index': 1, 'login': 'aunt-q'},
+                    {'index': 2, 'login': 'judge-p'},
+                    {'index': 3, 'login': 'judge-x'},
+                    {'index': 4, 'login': 'mr-y'}],
+                   [{'flow': 1, 'subject': 'judge-p', 'voter': '<superseed>'},
+                    {'flow': 3, 'subject': 'judge-x', 'voter': '<superseed>'},
+                    {'flow': 2, 'subject': 'mr-y', 'voter': 'judge-x'},
+                    {'flow': 1, 'subject': 'aunt-q', 'voter': 'mr-y'}])],
+         'nodes': [{'login': 'aunt-q', 'rating': 3},
+                   {'login': 'aunt-x', 'rating': 1},
+                   {'login': 'aunt-y', 'rating': 1},
+                   ...
+                   {'login': 'ms-z', 'rating': 1}]}
+
+        Check that it's JSON-serializable:
+
+        >>> import json
+        >>> _ = json.dumps(info)
+        """
+        trusted = cls.trust_ratings(certs, seed, good_nodes)
+        flow = [
+            (rating, who, why)
+            for rating in cls.ratings
+            for edges in [certs[certs.rating >= rating]]
+            for (who, why) in [
+                    cls.net_flow(edges, seed, good_nodes[rating - 1])]
+        ]
+
+        def plain(df):
+            return df.reset_index().to_dict('records')
+
         return {
-            "nodes": nodes,
-            "edges": edges
+            "nodes": plain(trusted),
+            # ISSUE: last_cert is not JSON serializable
+            "certs": plain(certs[['voter', 'subject', 'rating']]),
+            "flow": [
+                {"rating": rating, "who": plain(who), "why": plain(why)}
+                for rating, who, why in flow
+            ]
         }
 
 
@@ -769,7 +920,7 @@ class MockIO(object):
     ])
 
     fs = {
-        './conf.ini': config
+        './../conf.ini': config
     }
 
     def __init__(self, path='.', web_ua=False):
@@ -781,7 +932,7 @@ class MockIO(object):
     def makeIO(cls):
         it = cls()
         return IO(it.create_engine, it.build_opener,
-                  it.NamedTemporaryFile, it / 'conf.ini')
+                  it.NamedTemporaryFile, it / '../conf.ini')
 
     @property
     def cwd(self):
@@ -818,6 +969,23 @@ class MockIO(object):
     @contextmanager
     def NamedTemporaryFile(self, mode='wb'):
         yield self / 'tempfile1'
+
+    @classmethod
+    def certs(cls,
+              size_factor=5):
+        import numpy as np
+        who = pd.Series([
+            pfx + sufx
+            for pfx in ['mr-', 'ms-', 'judge-', 'col-', 'aunt-']
+            for sufx in ['x', 'y', 'z', 'p', 'd', 'q']
+        ])
+        qty = len(who) * size_factor
+        np.random.seed(0)
+        certs = pd.DataFrame(dict(
+            voter=np.random.choice(who, qty),
+            subject=np.random.choice(who, qty),
+            rating=np.random.choice([1, 2, 3], qty)))
+        return certs
 
 
 class MockFP(StringIO):

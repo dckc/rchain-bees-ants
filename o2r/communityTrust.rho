@@ -1,0 +1,189 @@
+new registerGame, makeTrustCommunity in {
+
+@"stderr"!("@@communityTrust.rho running...") |
+
+// ISSUE: how do we replace contracts during dev? registerGameNNN gets old.
+new game1Ch, logPlayer in {
+  registerGame!(
+    *makeTrustCommunity,
+    "90685cf270025cddab375b3de595e9b87548c5f05f9e5bf17502d7cfcb7259f7".hexToBytes(),
+    *game1Ch)
+  |
+  // TODO: why can't we match on @[@game1, _]?
+  for (game1 <- game1Ch) {
+    @"stdout"!(["registered game; adding players:", *game1])|
+    game1!(["join", "dckc"], *logPlayer)
+    |
+    game1!(["join", "a1"], *logPlayer)
+    |
+    game1!(["join", "b2"], *logPlayer)
+    |
+    game1!(["join", "c3"], *logPlayer)
+    |
+    game1!(["join", "d4"], *logPlayer)
+    |
+    contract logPlayer(@player) = {
+      @"stdout"!(["player registered:", player])
+    }
+
+    |
+    new roCh, uCh, doCh, resultCh in {
+      game1!("reading", *roCh) |
+      for (ro <- roCh) {
+        ro!("getTable", "users", *uCh) |
+        for (@users <- uCh) {
+          @{users.get("a1")}!("certify", users.get("b2"), 1, *doCh) |
+          for (_ <- doCh) {
+            ro!("getTable", "trust_cert", *resultCh) |
+            for (@result <- resultCh) {
+              @"stdout"!(["certs:", result])
+            }
+          }
+        }
+      }
+    }
+  }
+}
+|
+
+new gamesByKey in {
+  gamesByKey!({})
+  |
+
+  // ISSUE: if maker never returns, our gamesByKey gets stuck.
+  contract registerGame(maker, @pk, return) = {
+    @"stderr"!("@@TODO: require signature from registerGame caller to prevent clobbering.") |
+    new gameCh in {
+      for (@old <- gamesByKey) {
+        maker!(*gameCh)
+        |
+        for (@game <- gameCh) {
+          gamesByKey!(old.union({pk: game}))
+          |
+          @"stdout"!(["registered:", {"key": pk, "maker": *maker, "game": game}])|
+          return!(game)
+        }
+      }
+    }
+  }
+
+  |
+  contract @"takeTurn"(@gameKey, @turn, @turnSig, return) = {
+    for (@old <- gamesByKey) {
+      gamesByKey!(old)  // TODO: peek
+      |
+      @"stderr"!(["takeTurn key lookup:", old, gameKey.hexToBytes()]) |
+      match old.get(gameKey.hexToBytes()) {
+        Nil => {
+          @"stderr"!(["@@no game registered by key:", gameKey])
+          |
+          return!(Nil) // TODO: refine error idiom(s)
+        }
+        game => {
+          new sigCh, verifyCh in {
+            // ISSUE: running the verify code through verifyCh
+            // seems odd, but this doesn't work otherwise.
+            // https://rchain.atlassian.net/browse/RHOL-564
+            verifyCh!(@"ed25519Verify"!(
+              turn.toByteArray(),
+              turnSig.hexToBytes(),
+              gameKey.hexToBytes(),
+              *sigCh))
+            |
+            for (doVerify <- verifyCh) {
+              *doVerify
+              |
+              for (@false <- sigCh) {
+                @"stderr"!(["@@bad sig", turn, turnSig, gameKey]) |
+                return!(Nil)
+              }
+              |
+              for (@true <- sigCh) {
+                @"stdout"!(["good sig!", turn])
+                |
+                @game!(turn, *return)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+|
+contract makeTrustCommunity(return) = {
+  new community, readOnly, byName, trustCertCh in {
+    return!(*community)  // TODO: return lookup too
+    |
+    byName!({}) | trustCertCh!({})
+    |
+    for (@["merge", "trust_cert",
+      {@"cert_time"!(t) | @"rating"!(r) | @"subject"!(s) | @"voter"!(v)}], return <= community) {
+      @"stderr"!(["@@merge:", [v, s, r]]) |
+      for (@old <- byName) {
+        byName!(old)
+        |
+        match [old.get(v), old.get(s)] {
+          [Nil, _] => { return!({"error": ["unknown voter:", v]}) }
+          [_, Nil] => { return!({"error": ["unknown subject:", s]}) }
+          [voter, subject] => {
+            @voter!("certify", subject, r, *return)
+          }
+        }
+      }
+    }
+    |
+    for(@"reading", return <= community) {
+      return!(*readOnly)
+    }
+    |
+    for(@"getTable", @"trust_cert", return <= readOnly) {
+      for(@t <- trustCertCh) {
+        trustCertCh!(t) | return!(t)
+      }
+    }
+    |
+    // ISSUE: this design is no good; it lets anybody lookup any player
+    // and then exercise the rights of that player.
+    for(@"getTable", @"users", return <= readOnly) {
+      for(@t <- byName) {
+        byName!(t) | return!(t)
+      }
+    }
+    |
+    // TODO: petnames
+    // ISSUE: join would be a method on the player. call this addPlayer or makePlayer?
+    for (@["join", myName], return <= community) {
+      for (@named <- byName) {
+        match named.get(myName) {
+          ~Nil => {
+            @"stderr"!(["name already taken", myName]) |
+            byName!(named)
+            |
+            return!(Nil)
+          }
+          Nil => {
+            new player in {
+              @"stdout"!(["new player:", myName, *player]) |
+              return!(*player)
+              |
+              byName!(named.union({myName: *player}))
+              |
+              for (@"certify", @subject, @level, return <= player) {
+                @"stdout"!(["@@debug", myName, *player, "certifies", subject, "at", level])
+                |
+                for (@t <- trustCertCh) {
+                  trustCertCh!(t.union({[*player, subject]: level})) |
+                  return!(true)
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+}

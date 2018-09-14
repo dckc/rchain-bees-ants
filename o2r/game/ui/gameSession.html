@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+  <head>
+    <title>
+      RChain Community Trust Metric
+    </title>
+    <link rel="stylesheet" href="/apps/gateway/ui/formTidy.css" />
+  </head>
+  <body>
+    <div align="right" id="greeting">
+      Hello <a id="user">$username</a>
+      <br /><em id="session"></em>
+    </div>
+    <div class="main">
+      <h1>RChain Community Trust Metric</h1>
+      <!-- ISSUE: parameterize title? -->
+
+      <fieldset class="tidy">
+	<label><b>Peer:</b>
+	  <select id="subject">
+	    <option>Angela</option>
+	    <option>Bob</option>
+	    <option>Charlie</option>
+	  </select>
+	</label>
+	<label><b>Rating:</b>
+	  <select id="rating">
+	    <option value="1">Apprentice</option>
+	    <option value="2">Journeyer</option>
+	    <option value="3">Master</option>
+	  </select>
+	</label>
+	<!-- ISSUE: how to show local time? -->
+	<label><b>Cert time (UTC):</b> <input id="cert_time" readonly
+					      value="2018-07-01 12:12:12" type="datetime-local" /> </label>
+	<br clear="all" />
+	<div><label><b><button id="certify">Save</button></b></label></div>
+	<br clear="all" />
+	<div id="results">
+	  <label><b>Record Key:</b> <input id="recordKey" readonly size="50" /></label>
+	  <label><b>Rholang Deployed:</b>
+	    <textarea id="takeTurnTerm" readonly rows="15" cols="50" ></textarea>
+	  </label>
+	  <label><b>Signature:</b> <input id="turnSig" readonly size="80" /></label>
+	</div>
+      </fieldset>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+            integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bacon.js/2.0.7/Bacon.min.js"
+	    integrity="sha256-HalzaH9mblejhoA2QD+Jk3ZkU5H8BslQp9fTDE9MNSE="
+	    crossorigin="anonymous"></script>
+
+    <script type="text/javascript" src="/views/libs/q.js"></script>
+    <script src="/views/libs/capperConnect.js"></script>
+    <script src="/apps/game/ui/sessionUI.js"></script>
+
+    <script async>
+      $('#results').hide();
+      $(document).ready(() => {
+        const clock = () => new Date();
+        // sessionUI(mockSession({ clock }), clock, $);
+        sessionUI(CapperConnect.home, clock, $);
+      });
+    </script>
+  </body>
+</html>

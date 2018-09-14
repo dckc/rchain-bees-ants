@@ -106,7 +106,7 @@ class conf_ApplicationDelegate {
         $app =& Dataface_Application::getInstance();
         $app->addHeadContent(
                 sprintf('<link rel="stylesheet" type="text/css" href="%s"/>',
-                        htmlspecialchars(DATAFACE_SITE_URL.'/rchain-style.css')
+                        htmlspecialchars(DATAFACE_SITE_URL.'/templates/rchain-style.css')
                 )
             );
 
@@ -151,7 +151,7 @@ EOT;
     <li><a href='https://github.com/rchain/bounties/blob/master/CONTRIBUTING.md'>Bounty Process</a></li>
   </ul>
   <li><a href='aux/user'><b>Sync</b></li>
-  <li><a href='trust_net_viz.html'>Trust Network</a></li>
+  <li><a href='trust_sync/trust_net_viz.html'>Trust Network</a></li>
 </ul>
 EOT;
 

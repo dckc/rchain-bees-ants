@@ -1,0 +1,31 @@
+/* ack: https://css-tricks.com/css3-tabs/
+
+	box-shadow: 0 48px 80px -32px rgba(0,0,0,0.3);
+
+.tabs { list-style: none; }
+.tabs li { display: inline; }
+.tabs li a { color: black; float: left; display: block; padding: 4px 10px; margin-left: -1px; position: relative; left: 1px; background: white; text-decoration: none; }
+.tabs li a:hover { background: #ccc; }
+
+.group:after { visibility: hidden; display: block; font-size: 0; content: " "; clear: both; height: 0; }
+
+.box-wrap { position: relative; min-height: 250px; }
+.tabbed-area div div { background: white; padding: 20px; min-height: 250px; position: absolute; top: -1px; left: 0; width: 100%; }
+.tabbed-area div div, .tabs li a { border: 1px solid #ccc; }
+
+#net-1:target, #net-2:target, #net-3:target {
+  z-index: 1;
+                              }
+ */
+
+
+.tabbed-area { min-height: 250px; position: relative; width: 100%; }
+.tabbed-area > div { display: inline; }
+.tabbed-area > div > a { margin-left: -1px; position: relative; left: 1px; text-decoration: none; color: black; background: white; display: block; float: left; padding: 5px 10px; border: 1px solid #ccc; border-bottom: 1px solid white; }
+.tabbed-area > div:not(:target) > a { border-bottom: 0; background: -moz-linear-gradient(top, white, #eee); }	
+.tabbed-area > div:target > a { background: white; }	
+.tabbed-area > div > div { background: white; z-index: -2; left: 0; top: 30px; bottom: 0; right: 0; padding: 20px; border: 1px solid #ccc; }	
+.tabbed-area > div:not(:target) > div { position: absolute }
+.tabbed-area > div:target > div { position: absolute; z-index: -1; }
+        
+hr { clear: both }

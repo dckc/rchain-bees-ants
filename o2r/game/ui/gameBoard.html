@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+  <title>RChain / OAuth Gateway</title>
+  <style>
+    /* ack: https://stackoverflow.com/a/10868749 */
+    /* ISSUE: move to .css file */
+fieldset.tidy label b {
+    display: inline-block;
+    float: left;
+    clear: left;
+    width: 10em;
+    text-align: right;
+}
+fieldset.tidy input {
+  display: inline-block;
+  float: left;
+    }
+
+</style>
+</head>
+<body>
+  <h1>RChain / OAuth Gateway</h1>
+
+  <fieldset class="tidy">
+    <legend>New OAuth2 Client</legend>
+    <label><b>Strategy:</b>
+      <select id="strategy">
+	<option>github</option>
+	<option>discord</option>
+      </select>
+    </label>
+    <label><b>Path:</b> <input id="path" /></label>
+    <label><b>Callback Path:</b> <input id="callbackPath" /></label>
+    <label><b>Client Id:</b> <input id="clientID" /></label>
+    <label><b>Client Secret:</b> <input id="clientSecret" type="password" /></label>
+    <br clear="all" />
+    <div><label><b><button id="makeSignIn">Create</button></b></label></div>
+  </fieldset>
+
+  <h2>Clients</h2>
+  <ul id="clients">
+  </ul>
+
+  <hr />
+  <address>
+    by dckc
+    <br />
+    <small>copyright (c) 2018 <a href="https://rchain.coop">RChain Cooperative</a></small>
+  </address>
+
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+          integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+          crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bacon.js/2.0.7/Bacon.min.js"
+	  integrity="sha256-HalzaH9mblejhoA2QD+Jk3ZkU5H8BslQp9fTDE9MNSE="
+	  crossorigin="anonymous"></script>
+
+  <script type="text/javascript" src="/views/libs/q.js"></script>
+  <script src="/views/libs/capperConnect.js"></script>
+  <script src="/apps/game/ui/gameUI.js"></script>
+
+  <script async>
+    $(document).ready(() => {
+        gameUI(CapperConnect.home, $);
+    });
+  </script>
+</body>
+</html>
