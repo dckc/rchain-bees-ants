@@ -13,7 +13,7 @@
     "passport-github": "^1.1.0",
     "q": "~1.5.1",
     "rchain-api": "github:dckc/RChain-API",
-    "tweetnacl": "^1.0.0"
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "flow-bin": "^0.75.0",
