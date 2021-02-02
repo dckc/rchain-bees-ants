@@ -6,7 +6,7 @@
   "dependencies": {
     "Capper": "dckc/Capper#master",
     "docopt": "^0.6.2",
-    "express": "^4.16.3",
+    "express": "^4.17.1",
     "grpc": "^1.24.4",
     "passport": "^0.4.0",
     "passport-discord": "^0.1.3",
