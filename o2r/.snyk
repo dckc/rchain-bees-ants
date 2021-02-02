@@ -1,0 +1,21 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.19.0
+ignore: {}
+# patches apply the minimum changes required to fix a vulnerability
+patch:
+  SNYK-JS-LODASH-567746:
+    - grpc > lodash:
+        patched: '2021-02-02T04:10:10.105Z'
+    - RChain-API > grpc > lodash:
+        patched: '2021-02-02T04:10:10.105Z'
+  'npm:mime:20170907':
+    - Capper > express > send > mime:
+        patched: '2021-02-02T04:10:10.105Z'
+    - Capper > express > connect > send > mime:
+        patched: '2021-02-02T04:10:10.105Z'
+  'npm:negotiator:20160616':
+    - Capper > express > connect > negotiator:
+        patched: '2021-02-02T04:10:10.105Z'
+  'npm:qs:20140806-1':
+    - Capper > express > connect > qs:
+        patched: '2021-02-02T04:10:10.105Z'
